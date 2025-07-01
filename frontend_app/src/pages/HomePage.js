@@ -88,7 +88,7 @@ export default function HomePage() {
   }, [loading]);
 
   // Play section TTS intro and optionally sample on focus/enter
-  function speakWithTTS(text) {
+  function speakWithTTS(text, onEnd = null) {
     // Browser SpeechSynthesis only, fallback if available
     if (window.speechSynthesis && text) {
       try {
@@ -96,8 +96,14 @@ export default function HomePage() {
         const utter = new window.SpeechSynthesisUtterance(text);
         utter.lang = settings.language || "en";
         utter.rate = settings.ttsSpeed || 1.0;
+        if (typeof onEnd === "function") {
+          utter.onend = onEnd;
+        }
         window.speechSynthesis.speak(utter);
       } catch { /* do nothing if error */ }
+    } else if (typeof onEnd === "function") {
+      // Fallback: call onEnd immediately if TTS not available
+      onEnd();
     }
   }
 
@@ -127,22 +133,23 @@ export default function HomePage() {
     }
   }
 
-  // On section click, TTS-pop followed by navigation
+  // On section click, TTS-pop followed by navigation only after TTS finishes
   function handleSectionClick(stype, keyboard = false) {
-    // For accessibility, play section intro before navigation
-    speakWithTTS(
+    // Build the text to announce
+    const announcement =
       (stype.ttsIntro ||
         `You selected ${stype.label}.`) +
-        (sectionSamples[stype.key]?.text
-          ? `. Example: ${sectionSamples[stype.key].text}`
-          : "")
-    );
-    // After a brief delay, then navigate (or do immediately if mouse)
-    setTimeout(() => {
+      (sectionSamples[stype.key]?.text
+        ? `. Example: ${sectionSamples[stype.key].text}`
+        : "");
+
+    // On TTS end, navigate to the section's content
+    const onTTSFinish = () => {
       if (sectionSamples[stype.key]) {
         navigate(`/content/${sectionSamples[stype.key].id}`);
       }
-    }, keyboard ? 1900 : 300); // hold TTS a little longer for keyboard but not for mouse
+    };
+    speakWithTTS(announcement, onTTSFinish);
   }
 
   if (loading) {
