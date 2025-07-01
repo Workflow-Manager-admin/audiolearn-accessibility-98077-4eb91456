@@ -50,6 +50,23 @@ export default function DailySuggestionPage() {
     if (!loading && headingRef.current) headingRef.current.focus();
   }, [loading]);
 
+  // Auto-TTS: Speak daily suggestion aloud on load for accessibility
+  useEffect(() => {
+    if (!loading && suggestion && suggestion.text) {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        try {
+          const utter = new window.SpeechSynthesisUtterance(suggestion.text);
+          utter.lang = suggestion.language || settings.language || "en";
+          utter.rate = settings.ttsSpeed || 1.0;
+          window.speechSynthesis.speak(utter);
+        } catch (err) { /* ignore */ }
+      }
+    }
+    // Only run when suggestion changes/loads
+    // eslint-disable-next-line
+  }, [loading, suggestion, settings.language, settings.ttsSpeed]);
+
   // Accessible TTS playback
   async function handlePlayTTS() {
     if (!suggestion) return;

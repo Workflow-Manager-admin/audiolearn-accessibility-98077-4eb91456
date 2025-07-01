@@ -45,6 +45,26 @@ export default function ContentPage() {
     if (headingRef.current && !loading) headingRef.current.focus();
   }, [loading]);
 
+  // Auto-TTS: Speak content aloud on load for accessibility
+  useEffect(() => {
+    if (!loading && content && content.text) {
+      // Cancel any previous speech
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        try {
+          const utter = new window.SpeechSynthesisUtterance(content.text);
+          utter.lang = content.language || settings.language || "en";
+          utter.rate = settings.ttsSpeed || 1.0;
+          window.speechSynthesis.speak(utter);
+        } catch (err) {
+          // Fail gracefully (do nothing)
+        }
+      }
+    }
+    // Only run on content load
+    // eslint-disable-next-line
+  }, [loading, content, settings.language, settings.ttsSpeed]);
+
   // TTS: Play audio from backend or browser
   async function handlePlayTTS() {
     if (!content) return;

@@ -53,6 +53,27 @@ export default function FavoritesPage() {
     if (headingRef.current) headingRef.current.focus();
   }, [loading]);
 
+  // (Accessibility-extras) Auto-TTS: If only one favorite and page loads, speak it aloud
+  useEffect(() => {
+    if (
+      !loading &&
+      favoriteContents.length === 1 &&
+      favoriteContents[0]?.text
+    ) {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        try {
+          const utter = new window.SpeechSynthesisUtterance(favoriteContents[0].text);
+          utter.lang = favoriteContents[0].language || settings.language || "en";
+          utter.rate = settings.ttsSpeed || 1.0;
+          window.speechSynthesis.speak(utter);
+        } catch {}
+      }
+    }
+    // Only for favorites list change
+    // eslint-disable-next-line
+  }, [loading, favoriteContents, settings.language, settings.ttsSpeed]);
+
   // Play TTS for content
   async function handlePlayTTS(content) {
     setTtsId(content.id);
