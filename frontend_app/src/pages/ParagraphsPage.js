@@ -58,20 +58,26 @@ export default function ParagraphsPage() {
     }
   }, []); // Run only once on mount
 
+  // TEMPORARILY COMMENTED OUT - Verify fallback works without backend
   // Attempt to fetch backend content after initial render
   useEffect(() => {
+    console.log('ParagraphsPage: Using default paragraphs, backend fetch disabled');
+    
+    // Uncomment the following to restore backend fetch:
+    /*
     console.log('ParagraphsPage: Starting backend content fetch');
     let isMounted = true;
     
     const loadContent = async () => {
-      // Don't show loading on initial fetch since we have defaults
+      console.log('ParagraphsPage: Initial render complete, paragraphs:', defaultParagraphs.length);
       setLoading(true);
       setError("");
 
       try {
         console.log('ParagraphsPage: Fetching from backend...');
         const data = await listContent({ type: "paragraph", language: settings.language });
-        console.log('ParagraphsPage: Backend response received:', data);
+        console.log('ParagraphsPage: Backend response received:', 
+          data ? `${data.length} paragraphs` : 'no data');
 
         if (!isMounted) {
           console.log('ParagraphsPage: Component unmounted, skipping update');
@@ -89,13 +95,13 @@ export default function ParagraphsPage() {
           setParagraphs(data);
         } else {
           console.log('ParagraphsPage: Invalid/empty backend data, keeping defaults');
-          // We're already showing defaults, so no need to setParagraphs
+          console.log('ParagraphsPage: Current defaults:', defaultParagraphs.length);
         }
       } catch (err) {
         if (!isMounted) return;
         console.warn('ParagraphsPage: Error fetching content:', err);
         setError("Unable to load paragraphs from server. Showing default examples.");
-        // Already showing defaults, so no need to setParagraphs
+        console.log('ParagraphsPage: Fallback to defaults after error');
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -109,6 +115,7 @@ export default function ParagraphsPage() {
       console.log('ParagraphsPage: Cleanup - marking component as unmounted');
       isMounted = false; 
     };
+    */
   }, [settings.language]);
 
   // Helper to trigger browser TTS
