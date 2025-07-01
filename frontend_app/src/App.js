@@ -1,48 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { AccessibilityProvider } from "./AccessibilityContext";
+import Layout from "./components/Layout";
+
+// Feature screens/pages (stubs; to implement after)
+import HomePage from "./pages/HomePage";
+import ContentPage from "./pages/ContentPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import DailySuggestionPage from "./pages/DailySuggestionPage";
+import QuizPage from "./pages/QuizPage";
+import QuizResultsPage from "./pages/QuizResultsPage";
+import SettingsPage from "./pages/SettingsPage";
+import VoiceCommandPage from "./pages/VoiceCommandPage";
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
-
-  // Effect to apply theme to document element
+  // Set up TTS autoplay, accessibility listeners, etc. (as needed)
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+    // High-contrast CSS vars applied via theme provided in AccessibilityProvider
+  }, []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AccessibilityProvider>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/content/:contentId" element={<ContentPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/daily" element={<DailySuggestionPage />} />
+            <Route path="/quiz" element={<QuizPage />} />
+            <Route path="/quiz/results" element={<QuizResultsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/voice" element={<VoiceCommandPage />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </AccessibilityProvider>
   );
 }
 
