@@ -53,15 +53,13 @@ export default function ParagraphsPage() {
         const data = await listContent({ type: "paragraph", language: settings.language });
         if (!isMounted) return;
 
-        // Strict validation of backend data
-        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+        // Use backend data only if valid, otherwise fallback to defaults
+        if (data && Array.isArray(data) && data.length > 0 && data.every(item => item && typeof item.text === 'string')) {
+          setParagraphs(data);
+        } else {
           console.warn('Invalid or empty data from backend, using defaults');
           setParagraphs(defaultParagraphs);
-          return;
         }
-
-        // Only use backend data if we have valid content
-        setParagraphs(data.length > 0 ? data : defaultParagraphs);
       } catch (err) {
         if (!isMounted) return;
         console.warn('Error fetching paragraphs:', err);

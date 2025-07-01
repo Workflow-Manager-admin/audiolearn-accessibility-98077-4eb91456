@@ -40,15 +40,13 @@ export default function CommonWordsPage() {
         const data = await listContent({ type: "word", language: settings.language });
         if (!isMounted) return;
         
-        // Strict validation of backend data
-        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+        // Use backend data only if valid, otherwise fallback to defaults
+        if (data && Array.isArray(data) && data.length > 0 && data.every(item => item && typeof item.text === 'string')) {
+          setWords(data);
+        } else {
           console.warn('Invalid or empty data from backend, using defaults');
           setWords(defaultWords);
-          return;
         }
-        
-        // Only use backend data if we have valid content
-        setWords(data.length > 0 ? data : defaultWords);
       } catch (err) {
         if (!isMounted) return;
         console.warn('Error fetching words:', err);

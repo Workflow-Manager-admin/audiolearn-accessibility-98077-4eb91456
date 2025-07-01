@@ -38,15 +38,13 @@ export default function SentencesPage() {
         const data = await listContent({ type: "sentence", language: settings.language });
         if (!isMounted) return;
 
-        // Strict validation of backend data
-        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+        // Use backend data only if valid, otherwise fallback to defaults
+        if (data && Array.isArray(data) && data.length > 0 && data.every(item => item && typeof item.text === 'string')) {
+          setSentences(data);
+        } else {
           console.warn('Invalid or empty data from backend, using defaults');
           setSentences(defaultSentences);
-          return;
         }
-
-        // Only use backend data if we have valid content
-        setSentences(data.length > 0 ? data : defaultSentences);
       } catch (err) {
         if (!isMounted) return;
         console.warn('Error fetching sentences:', err);
