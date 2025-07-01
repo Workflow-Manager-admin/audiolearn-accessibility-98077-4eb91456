@@ -32,20 +32,35 @@ export default function SentencesPage() {
 
   // Fetch list of "sentence" content on mount, respect language settings
   useEffect(() => {
-    setLoading(true);
-    setError("");
-    setSentences([]);
-    listContent({ type: "sentence", language: settings.language })
-      .then((data) => {
-        // Use fetched data or fallback to defaults
-        setSentences(Array.isArray(data) && data.length > 0 ? data : defaultSentences);
-        setLoading(false);
-      })
-      .catch(() => {
+    let isMounted = true;
+    const loadContent = async () => {
+      try {
+        const data = await listContent({ type: "sentence", language: settings.language });
+        if (!isMounted) return;
+
+        // Strict validation of backend data
+        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+          console.warn('Invalid or empty data from backend, using defaults');
+          setSentences(defaultSentences);
+          return;
+        }
+
+        // Only use backend data if we have valid content
+        setSentences(data.length > 0 ? data : defaultSentences);
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('Error fetching sentences:', err);
         setError("Unable to load sentences from server.");
-        setSentences(defaultSentences); // Use defaults on error
-        setLoading(false);
-      });
+        // Keep default sentences on error
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadContent();
+    return () => { isMounted = false; };
   }, [settings.language]);
 
   // Focus heading for screen readers on load

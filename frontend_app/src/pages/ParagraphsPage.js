@@ -47,20 +47,35 @@ export default function ParagraphsPage() {
 
   // Fetch list of "paragraph" content from backend on mount/language change
   useEffect(() => {
-    setLoading(true);
-    setError("");
-    setParagraphs([]);
-    listContent({ type: "paragraph", language: settings.language })
-      .then((data) => {
-        // Use fetched data or fallback to defaults
-        setParagraphs(Array.isArray(data) && data.length > 0 ? data : defaultParagraphs);
-        setLoading(false);
-      })
-      .catch(() => {
+    let isMounted = true;
+    const loadContent = async () => {
+      try {
+        const data = await listContent({ type: "paragraph", language: settings.language });
+        if (!isMounted) return;
+
+        // Strict validation of backend data
+        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+          console.warn('Invalid or empty data from backend, using defaults');
+          setParagraphs(defaultParagraphs);
+          return;
+        }
+
+        // Only use backend data if we have valid content
+        setParagraphs(data.length > 0 ? data : defaultParagraphs);
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('Error fetching paragraphs:', err);
         setError("Unable to load paragraphs from server.");
-        setParagraphs(defaultParagraphs); // Use defaults on error
-        setLoading(false);
-      });
+        // Keep default paragraphs on error
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadContent();
+    return () => { isMounted = false; };
   }, [settings.language]);
 
   // Focus heading for screen readers on load

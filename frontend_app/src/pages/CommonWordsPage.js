@@ -34,20 +34,35 @@ export default function CommonWordsPage() {
 
   // Fetch list of "word" content on mount, respects language settings
   useEffect(() => {
-    setLoading(true);
-    setError("");
-    setWords([]);
-    listContent({ type: "word", language: settings.language })
-      .then((data) => {
-        // Use fetched data or fallback to defaults
-        setWords(Array.isArray(data) && data.length > 0 ? data : defaultWords);
-        setLoading(false);
-      })
-      .catch(() => {
+    let isMounted = true;
+    const loadContent = async () => {
+      try {
+        const data = await listContent({ type: "word", language: settings.language });
+        if (!isMounted) return;
+        
+        // Strict validation of backend data
+        if (!data || !Array.isArray(data) || !data.every(item => item && typeof item.text === 'string')) {
+          console.warn('Invalid or empty data from backend, using defaults');
+          setWords(defaultWords);
+          return;
+        }
+        
+        // Only use backend data if we have valid content
+        setWords(data.length > 0 ? data : defaultWords);
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('Error fetching words:', err);
         setError("Unable to load common words from server.");
-        setWords(defaultWords); // Use defaults on error
-        setLoading(false);
-      });
+        // Keep default words on error
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadContent();
+    return () => { isMounted = false; };
   }, [settings.language]);
 
   // Focus heading for screen readers on load
