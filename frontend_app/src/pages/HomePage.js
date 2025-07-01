@@ -4,9 +4,9 @@ import { useAccessibility } from "../AccessibilityContext";
 import { useNavigate } from "react-router-dom";
 
 /**
- * Accessible Home Page: shows three main sections (Common Words, Sentences, Paragraphs)
- * as accessible navigation cards/buttons. Fetches content types from backend, auto-focuses for screen readers,
- * and allows keyboard/ARIA navigation to each section. Sets up for TTS/auto-play integration.
+ * Accessible Home Page: shows three main sections (Common Words, Sentences (Level 1–2), Paragraphs)
+ * as accessible navigation cards/buttons, using backend content where available.
+ * Prominently splits navigation and auto-reads aloud using TTS (browser-based for section intro).
  */
 // PUBLIC_INTERFACE
 export default function HomePage() {
@@ -21,11 +21,29 @@ export default function HomePage() {
     paragraph: null,
   });
 
-  // Section labels & content types (maps backend "type" to display)
+  // Section labels/types (backend key and displayed info)
   const sectionTypes = [
-    { key: "word", label: "Common Words", desc: "Learn the most frequent English words.", color: "#1565C0" },
-    { key: "sentence", label: "Sentences", desc: "Explore basic level-1 and level-2 sentences.", color: "#00897B" },
-    { key: "paragraph", label: "Paragraphs", desc: "Read and listen to short English paragraphs.", color: "#AD1457" },
+    {
+      key: "word",
+      label: "Common Words",
+      desc: "Learn the most frequent English words.",
+      color: "#1565C0",
+      ttsIntro: "Common Words. Learn the most frequent English words.",
+    },
+    {
+      key: "sentence",
+      label: "Sentences (Level 1–2)",
+      desc: "Explore basic level-1 and level-2 English sentences.",
+      color: "#00897B",
+      ttsIntro: "Sentences, Level 1 to 2. Practice simple English sentences.",
+    },
+    {
+      key: "paragraph",
+      label: "Paragraphs",
+      desc: "Read and listen to short English paragraphs.",
+      color: "#AD1457",
+      ttsIntro: "Paragraphs. Listen and improve with short, simple paragraphs.",
+    },
   ];
 
   // Initial fetch: get a sample content item for each section type
@@ -33,7 +51,6 @@ export default function HomePage() {
     let mounted = true;
     setLoading(true);
     setError("");
-    // For accessibility, always fetch for current language
     Promise.all(
       sectionTypes.map((stype) =>
         listContent({ type: stype.key, language: settings.language })
@@ -58,25 +75,74 @@ export default function HomePage() {
     // eslint-disable-next-line
   }, [settings.language]);
 
-  // On load, focus the main heading for screen readers
+  // On load, focus heading for screen readers & announce by TTS
   useEffect(() => {
-    if (headingRef.current && !loading) headingRef.current.focus();
+    if (!loading && headingRef.current) {
+      headingRef.current.focus();
+      // Announce app context via browser TTS for visually challenged
+      speakWithTTS(
+        "Welcome to AudioLearn. Accessible English learning. Choose a section: Common Words, Sentences, or Paragraphs."
+      );
+    }
+    // eslint-disable-next-line
   }, [loading]);
 
-  // Keyboard: allow arrow keys to move focus from section-to-section
+  // Play section TTS intro and optionally sample on focus/enter
+  function speakWithTTS(text) {
+    // Browser SpeechSynthesis only, fallback if available
+    if (window.speechSynthesis && text) {
+      try {
+        window.speechSynthesis.cancel(); // Stop previous
+        const utter = new window.SpeechSynthesisUtterance(text);
+        utter.lang = settings.language || "en";
+        utter.rate = settings.ttsSpeed || 1.0;
+        window.speechSynthesis.speak(utter);
+      } catch { /* do nothing if error */ }
+    }
+  }
+
+  // Section ARIA/tab navigation: maintain refs for keyboard movement
   const sectionRefs = {
     word: useRef(),
     sentence: useRef(),
     paragraph: useRef(),
   };
-  function handleSectionKeyDown(e, idx) {
-    if (!["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(e.key)) return;
-    e.preventDefault();
-    const order = ["word", "sentence", "paragraph"];
-    let newIdx = idx;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") newIdx = (idx + 1) % order.length;
-    if (e.key === "ArrowLeft" || e.key === "ArrowUp") newIdx = (idx + order.length - 1) % order.length;
-    sectionRefs[order[newIdx]].current?.focus();
+  function handleSectionKeyDown(e, idx, stype) {
+    if (
+      ["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(e.key)
+    ) {
+      e.preventDefault();
+      const order = ["word", "sentence", "paragraph"];
+      let newIdx = idx;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown")
+        newIdx = (idx + 1) % order.length;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+        newIdx = (idx + order.length - 1) % order.length;
+      sectionRefs[order[newIdx]].current?.focus();
+    } else if (e.key === "Enter" || e.key === " ") {
+      // On enter/space, route and speak TTS intro for the section
+      handleSectionClick(stype, true);
+    } else if (e.key === "Tab") {
+      window.speechSynthesis?.cancel();
+    }
+  }
+
+  // On section click, TTS-pop followed by navigation
+  function handleSectionClick(stype, keyboard = false) {
+    // For accessibility, play section intro before navigation
+    speakWithTTS(
+      (stype.ttsIntro ||
+        `You selected ${stype.label}.`) +
+        (sectionSamples[stype.key]?.text
+          ? `. Example: ${sectionSamples[stype.key].text}`
+          : "")
+    );
+    // After a brief delay, then navigate (or do immediately if mouse)
+    setTimeout(() => {
+      if (sectionSamples[stype.key]) {
+        navigate(`/content/${sectionSamples[stype.key].id}`);
+      }
+    }, keyboard ? 1900 : 300); // hold TTS a little longer for keyboard but not for mouse
   }
 
   if (loading) {
@@ -121,7 +187,7 @@ export default function HomePage() {
       style={{
         padding: "1em",
         maxWidth: 800,
-        margin: "0 auto"
+        margin: "0 auto",
       }}
     >
       <h1
@@ -137,8 +203,8 @@ export default function HomePage() {
       >
         Welcome to AudioLearn
       </h1>
-      <section
-        aria-label="Choose a learning section"
+      <nav
+        aria-label="Main learning sections"
         style={{
           display: "flex",
           flexDirection: "row",
@@ -154,15 +220,10 @@ export default function HomePage() {
             key={stype.key}
             ref={sectionRefs[stype.key]}
             tabIndex={0}
-            aria-label={`Go to ${stype.label}. ${stype.desc} Example: ${sectionSamples[stype.key]?.text || "No example available"}`}
-            onClick={() => {
-              // Future: route to section page; for now, pass filtered type to /content/:contentId or a filtered page
-              // You can route to a filtered content page or set up a section route
-              // For now, let's route to the first example for each type (if exists)
-              if (sectionSamples[stype.key]) {
-                navigate(`/content/${sectionSamples[stype.key].id}`);
-              }
-            }}
+            aria-label={`Select ${stype.label}. ${stype.desc}. Example: ${
+              sectionSamples[stype.key]?.text || "No example available"
+            }`}
+            onClick={() => handleSectionClick(stype, false)}
             style={{
               ...sectionCardStyle,
               borderColor: stype.color,
@@ -170,16 +231,20 @@ export default function HomePage() {
               color: "#111",
               outline: "none",
             }}
-            onKeyDown={(e) => handleSectionKeyDown(e, idx)}
+            onFocus={() => speakWithTTS(stype.ttsIntro)}
+            onKeyDown={(e) => handleSectionKeyDown(e, idx, stype)}
+            id={`section-${stype.key}`}
           >
             <span
               style={{
                 fontWeight: 700,
                 fontSize: settings.fontSize + 8,
                 color: stype.color,
-                marginBottom: "0.22em",
-                letterSpacing: "0.01em"
+                marginBottom: ".22em",
+                letterSpacing: "0.01em",
+                display: "block",
               }}
+              tabIndex={-1}
             >
               {stype.label}
             </span>
@@ -187,15 +252,16 @@ export default function HomePage() {
               style={{
                 fontSize: settings.fontSize,
                 color: "#333",
-                marginBottom: "0.6em",
-                display: "block"
+                marginBottom: ".6em",
+                display: "block",
               }}
+              tabIndex={-1}
             >
               {stype.desc}
             </span>
             <span
               tabIndex={0}
-              aria-label={`Sample: ${sectionSamples[stype.key]?.text || "No available sample in this section"}`}
+              aria-label={`Example: ${sectionSamples[stype.key]?.text || "No available sample in this section"}`}
               style={{
                 fontSize: settings.fontSize - 2,
                 color: "#666",
@@ -213,9 +279,9 @@ export default function HomePage() {
             </span>
           </button>
         ))}
-      </section>
+      </nav>
 
-      <div
+      <section
         tabIndex={0}
         aria-label="Home page accessibility help"
         style={{
@@ -224,16 +290,16 @@ export default function HomePage() {
           fontSize: settings.fontSize - 2,
           background: "#e0e7ff",
           borderRadius: 7,
-          padding: "0.8em 1em"
+          padding: "0.8em 1em",
         }}
       >
         <b>Accessibility tips:</b> <br />
-        • Use Tab and arrow keys to move between sections.<br />
-        • Press Enter or Space to select and enter a section.<br />
+        • Use Tab and arrow keys to move between sections. <br />
+        • Press Enter or Space to select and enter a section; TTS will read the section on selection. <br />
         • Each section entry will read out the content via text-to-speech.<br />
         • Increase font size and TTS speed in Settings for better visibility and audibility.<br />
         • All navigation is fully ARIA-labeled and screen reader-compatible.
-      </div>
+      </section>
     </div>
   );
 }
@@ -258,5 +324,5 @@ const sectionCardStyle = {
   fontSize: "inherit",
   outlineOffset: 3,
   fontWeight: 500,
-  position: "relative"
+  position: "relative",
 };
