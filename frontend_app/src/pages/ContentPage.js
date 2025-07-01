@@ -3,12 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   getContentById,
   getTTSForContent,
-  addFavorite,
 } from "../api";
 import { useAccessibility } from "../AccessibilityContext";
 
 /**
- * Accessible Content Page: shows content details, TTS controls, favorite, and quiz options.
+ * Accessible Content Page: shows content details, TTS controls, and quiz options.
  * Integrates global accessibility and user preferences.
  */
 // PUBLIC_INTERFACE
@@ -22,7 +21,6 @@ export default function ContentPage() {
   const [error, setError] = useState("");
   const [content, setContent] = useState(null);
   const [ttsState, setTtsState] = useState("idle");
-  const [favState, setFavState] = useState("idle");
   const headingRef = useRef();
 
   // Fetch specific content
@@ -91,20 +89,6 @@ export default function ContentPage() {
       }
     }
     setTtsState("idle");
-  }
-
-  // Add to favorites
-  async function handleFavorite() {
-    setFavState("working");
-    try {
-      await addFavorite({
-        user_id: settings.user?.id,
-        content_id: content.id,
-      });
-      setFavState("done");
-    } catch {
-      setFavState("error");
-    }
   }
 
   // Send to quiz
@@ -215,19 +199,7 @@ export default function ContentPage() {
           {ttsState === "loading" ? "Playing..." : "🔊 Listen"}
         </button>
         <button
-          style={buttonStyle}
-          aria-label="Add to favorites"
-          onClick={handleFavorite}
-          tabIndex={0}
-        >
-          {favState === "working"
-            ? "Adding..."
-            : favState === "done"
-            ? "★ Favorited"
-            : "☆ Favorite"}
-        </button>
-        <button
-          style={buttonStyle}
+          style={{...buttonStyle, background: "#43A047"}}
           aria-label="Practice with quiz"
           onClick={handleQuiz}
           tabIndex={0}

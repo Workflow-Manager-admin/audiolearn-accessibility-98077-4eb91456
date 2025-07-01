@@ -5,7 +5,7 @@ const defaultSettings = {
   ttsSpeed: 1.0,
   theme: "light",
   language: "en",
-  favorites: [],
+
   user: null,
 };
 

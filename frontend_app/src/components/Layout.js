@@ -41,8 +41,7 @@ export default function Layout({ children }) {
         }}
       >
         <a href="/" style={{ color: "#fff", textDecoration: "none" }}>Home</a>
-        <a href="/quiz" style={{ color: "#fff", textDecoration: "none" }}>Quiz</a>
-        <a href="/favorites" style={{ color: "#fff", textDecoration: "none" }}>Favorites</a>
+        <a href="/quiz" style={{ color: "#fff", textDecoration: "none", fontWeight: "bold" }}>Quiz</a>
         <a href="/settings" style={{ color: "#fff", textDecoration: "none" }}>Settings</a>
         <a href="/voice" style={{ color: "#fff", textDecoration: "none" }}>Voice</a>
       </nav>

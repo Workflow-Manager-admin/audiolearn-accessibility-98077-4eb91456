@@ -6,7 +6,7 @@ import Layout from "./components/Layout";
 // Feature screens/pages (stubs; to implement after)
 import HomePage from "./pages/HomePage";
 import ContentPage from "./pages/ContentPage";
-import FavoritesPage from "./pages/FavoritesPage";
+
 import DailySuggestionPage from "./pages/DailySuggestionPage";
 import QuizPage from "./pages/QuizPage";
 import QuizResultsPage from "./pages/QuizResultsPage";
@@ -33,7 +33,7 @@ function App() {
             <Route path="/sentences" element={<SentencesPage />} />
             <Route path="/paragraphs" element={<ParagraphsPage />} />
             <Route path="/content/:contentId" element={<ContentPage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
+
             <Route path="/daily" element={<DailySuggestionPage />} />
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/quiz/results" element={<QuizResultsPage />} />

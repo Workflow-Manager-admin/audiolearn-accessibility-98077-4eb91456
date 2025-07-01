@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
   getDailySuggestion,
-  addFavorite,
   getTTSForContent,
 } from "../api";
 import { useAccessibility } from "../AccessibilityContext";
@@ -9,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 /**
  * Accessible Daily Suggestions Page: fetches today's suggestions from backend,
- * supports TTS, favorite, and quiz actions,
+ * supports TTS and quiz actions,
  * high-contrast, scalable, full ARIA, keyboard and screen reader support.
  */
 // PUBLIC_INTERFACE
@@ -19,7 +18,6 @@ export default function DailySuggestionPage() {
   const [suggestion, setSuggestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ttsState, setTtsState] = useState("idle");
-  const [favState, setFavState] = useState("idle");
   const [error, setError] = useState("");
   const headingRef = useRef();
   const navigate = useNavigate();
@@ -95,18 +93,6 @@ export default function DailySuggestionPage() {
       }
     }
     setTtsState("idle");
-  }
-
-  // Mark as favorite
-  async function handleFavorite() {
-    if (!suggestion) return;
-    setFavState("working");
-    try {
-      await addFavorite({ user_id: userId, content_id: suggestion.id });
-      setFavState("done");
-    } catch {
-      setFavState("error");
-    }
   }
 
   // Send suggestion to quiz
@@ -227,20 +213,7 @@ export default function DailySuggestionPage() {
           {ttsState === "loading" ? "Playing..." : "🔊 Listen"}
         </button>
         <button
-          style={buttonStyle}
-          aria-label="Mark daily suggestion as favorite"
-          onClick={handleFavorite}
-          tabIndex={0}
-          disabled={favState === "working" || favState === "done"}
-        >
-          {favState === "working"
-            ? "Adding..."
-            : favState === "done"
-            ? "★ Favorited"
-            : "☆ Favorite"}
-        </button>
-        <button
-          style={buttonStyle}
+          style={{...buttonStyle, background: "#43A047"}}
           aria-label="Practice this suggestion as quiz"
           onClick={handleQuiz}
           tabIndex={0}
