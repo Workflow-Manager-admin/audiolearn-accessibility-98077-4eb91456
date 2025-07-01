@@ -9,6 +9,16 @@ import { useNavigate } from "react-router-dom";
  * - Renders a keyboard and ARIA accessible list of sentences.
  * - Clicking or pressing Enter/Space on any sentence speaks the sentence aloud using browser TTS.
  */
+
+// Default examples to show if backend returns empty
+const defaultSentences = [
+  { id: "s1", text: "This is my book." },
+  { id: "s2", text: "How are you today?" },
+  { id: "s3", text: "I like music and dancing." },
+  { id: "s4", text: "The sun is bright." },
+  { id: "s5", text: "Can you help me, please?" }
+];
+
 // PUBLIC_INTERFACE
 export default function SentencesPage() {
   const { settings } = useAccessibility();
@@ -27,11 +37,13 @@ export default function SentencesPage() {
     setSentences([]);
     listContent({ type: "sentence", language: settings.language })
       .then((data) => {
-        setSentences(Array.isArray(data) ? data : []);
+        // Use fetched data or fallback to defaults
+        setSentences(Array.isArray(data) && data.length > 0 ? data : defaultSentences);
         setLoading(false);
       })
       .catch(() => {
         setError("Unable to load sentences from server.");
+        setSentences(defaultSentences); // Use defaults on error
         setLoading(false);
       });
   }, [settings.language]);
@@ -41,19 +53,7 @@ export default function SentencesPage() {
     if (headingRef.current && !loading) headingRef.current.focus();
   }, [loading]);
 
-  // On initial load, auto-TTS announce context for visually challenged
-  useEffect(() => {
-    if (!loading && sentences.length > 0) {
-      speakWithTTS(
-        "Sentences page loaded. There are " +
-          sentences.length +
-          " practice sentences. Use Tab to move through the list. Click or press Enter to hear any sentence."
-      );
-    }
-    // eslint-disable-next-line
-  }, [loading, sentences.length]);
-
-  // Helper to trigger browser TTS on a given text (uses global settings)
+  // Helper to trigger browser TTS
   function speakWithTTS(text, onEnd = null) {
     if (window.speechSynthesis && text) {
       try {
@@ -64,7 +64,6 @@ export default function SentencesPage() {
         if (typeof onEnd === "function") utter.onend = onEnd;
         window.speechSynthesis.speak(utter);
       } catch {
-        // no-op
         if (typeof onEnd === "function") onEnd();
       }
     } else if (typeof onEnd === "function") {
@@ -78,31 +77,13 @@ export default function SentencesPage() {
     speakWithTTS(sentenceObj.text, () => setTtsId(null));
   }
 
-  // Keyboard handler for item
+  // Keyboard handler for sentence list items
   function handleListItemKey(e, sentenceObj) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       handleSentenceTTS(sentenceObj);
     }
   }
-
-  // Reusable, scalable, accessible button style
-  const buttonStyle = {
-    background: "var(--button-bg, #1976D2)",
-    color: "var(--button-text, #fff)",
-    border: "2px solid transparent",
-    borderRadius: "7px",
-    padding: "0.65em 1.1em",
-    fontSize: "1em",
-    fontWeight: 600,
-    cursor: "pointer",
-    outlineOffset: "2px",
-    minWidth: 70,
-    minHeight: 44,
-    marginRight: "0.3em",
-    marginTop: "0.7em",
-    transition: "background 0.2s, border 0.2s, color 0.2s",
-  };
 
   if (loading) {
     return (
@@ -112,14 +93,16 @@ export default function SentencesPage() {
         tabIndex={0}
         style={{
           fontSize: settings.fontSize + 6,
-          color: "#aaa",
-          marginTop: "2em"
+          color: "#6b7280",
+          marginTop: "2em",
+          textAlign: "center"
         }}
       >
         Loading sentences, please wait...
       </div>
     );
   }
+
   if (error) {
     return (
       <div
@@ -132,34 +115,11 @@ export default function SentencesPage() {
           border: "2px solid #ba000d",
           padding: "1em",
           margin: "2em auto",
-          maxWidth: 600,
+          maxWidth: 480,
+          borderRadius: 14
         }}
       >
         {error}
-      </div>
-    );
-  }
-  // Provide fallback mock data for demo/TTS if backend is empty
-  const mockSentences = [
-    { id: "s1", text: "This is my book." },
-    { id: "s2", text: "How are you today?" },
-    { id: "s3", text: "I like music and dancing." },
-    { id: "s4", text: "The sun is bright." },
-    { id: "s5", text: "Can you help me, please?" }
-  ];
-  const sentencesToShow = sentences.length ? sentences : mockSentences;
-  if (!sentencesToShow.length) {
-    return (
-      <div
-        tabIndex={0}
-        style={{
-          fontSize: settings.fontSize,
-          color: "#222",
-          margin: "2em auto",
-          maxWidth: 600,
-        }}
-      >
-        No sentences found for this language (and no mock available).
       </div>
     );
   }
@@ -168,94 +128,117 @@ export default function SentencesPage() {
     <div
       aria-label="Sentences page"
       style={{
-        padding: "1em",
-        maxWidth: 700,
-        margin: "0 auto",
-        border: "2px solid var(--border-color, #1976D2)",
-        borderRadius: 9,
-        background: "#fafbff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "24px",
+        maxWidth: "100vw"
       }}
     >
-      <h2
-        ref={headingRef}
-        tabIndex={0}
-        style={{ fontSize: settings.fontSize + 8, fontWeight: 800, marginBottom: "0.2em" }}
-        aria-label="Sentences"
-      >
-        Sentences
-      </h2>
-      <p style={{ fontSize: settings.fontSize, margin: ".8em 0 1.2em 0" }} tabIndex={0}>
-        Browse basic English sentences for practice. Click or press Enter/Space on a sentence to hear it aloud.
-      </p>
-      <ul
-        ref={listRef}
-        aria-label="Sentence list"
+      <div
         style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: ".65em",
-          maxHeight: 500,
-          overflowY: "auto",
+          width: "100%",
+          maxWidth: 480,
           background: "#fff",
-          borderRadius: 6,
-          border: "1px solid #ddd",
+          borderRadius: 14,
+          border: "2px solid var(--sentences-accent, #059669)",
+          padding: "24px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
         }}
       >
-        {sentencesToShow.map((sentenceObj, idx) => (
-          <li
-            key={sentenceObj.id || sentenceObj.text || idx}
-            tabIndex={0}
-            style={{
-              fontSize: settings.fontSize + 2,
-              fontWeight: 500,
-              letterSpacing: ".01em",
-              color: "#203449",
-              background: ttsId === sentenceObj.id ? "#FFE0B2" : "transparent",
-              borderRadius: 5,
-              outline: "none",
-              padding: ".7em 1.1em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              transition: "background 0.13s",
-              minHeight: 48,
-            }}
-            aria-label={`Sentence: ${sentenceObj.text}`}
-            onClick={() => handleSentenceTTS(sentenceObj)}
-            onKeyDown={e => handleListItemKey(e, sentenceObj)}
-          >
-            <span style={{marginRight: 8}}>{sentenceObj.text}</span>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                handleSentenceTTS(sentenceObj);
-              }}
-              style={{
-                ...buttonStyle,
-                background: "#1976D2",
-                color: "#fff",
-                marginLeft: "auto",
-                minWidth: 48,
-                minHeight: 38,
-                fontSize: settings.fontSize,
-                borderRadius: 6,
-              }}
+        <h2
+          ref={headingRef}
+          tabIndex={0}
+          style={{
+            fontSize: settings.fontSize + 8,
+            fontWeight: 700,
+            color: "var(--sentences-accent, #059669)",
+            marginBottom: "4px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          aria-label="Sentences"
+        >
+          Sentences
+        </h2>
+        <p
+          style={{
+            fontSize: settings.fontSize,
+            color: "#222",
+            margin: ".8em 0 1.2em 0",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          tabIndex={0}
+        >
+          Browse basic English sentences for practice. Click or press Enter/Space on a sentence to hear it aloud.
+        </p>
+        <ul
+          ref={listRef}
+          aria-label="Sentence list"
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: ".65em",
+            maxHeight: 500,
+            overflowY: "auto",
+            background: "#fff",
+            borderRadius: 8
+          }}
+        >
+          {sentences.map((sentenceObj, idx) => (
+            <li
+              key={sentenceObj.id || idx}
               tabIndex={0}
-              aria-label={`Hear sentence "${sentenceObj.text}"`}
-              disabled={ttsId === sentenceObj.id}
-              type="button"
+              style={{
+                fontSize: settings.fontSize + 2,
+                fontFamily: "Helvetica Neue, Arial, sans-serif",
+                fontWeight: 500,
+                color: "#000",
+                background: ttsId === sentenceObj.id ? "#f3f4f6" : "transparent",
+                borderRadius: 8,
+                outline: "none",
+                padding: ".7em 1em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                transition: "background 0.15s",
+                minHeight: 44,
+                userSelect: "none"
+              }}
+              aria-label={`Sentence: ${sentenceObj.text}. Press to play.`}
+              onClick={() => handleSentenceTTS(sentenceObj)}
+              onKeyDown={e => handleListItemKey(e, sentenceObj)}
             >
-              {ttsId === sentenceObj.id ? "Playing…" : "🔊 Listen"}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div style={{ display: "flex", gap: "1em", marginTop: "2em" }}>
+              <span 
+                style={{
+                  marginRight: 12,
+                  color: "var(--sentences-accent, #059669)",
+                  fontSize: "1.2em"
+                }}
+                aria-hidden="true"
+              >
+                🔊
+              </span>
+              <span>{sentenceObj.text}</span>
+            </li>
+          ))}
+        </ul>
+
         <button
-          style={buttonStyle}
+          style={{
+            background: "var(--sentences-accent, #059669)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "12px 20px",
+            fontSize: settings.fontSize,
+            fontWeight: 600,
+            cursor: "pointer",
+            marginTop: "20px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
           aria-label="Go back to home"
           onClick={() => navigate("/")}
           tabIndex={0}
@@ -263,22 +246,26 @@ export default function SentencesPage() {
           ⬅ Home
         </button>
       </div>
+
       <section
         tabIndex={0}
         aria-label="Sentences page accessibility help"
         style={{
           marginTop: "1em",
-          color: "#3569bb",
+          color: "var(--sentences-accent, #059669)",
           fontSize: settings.fontSize - 2,
-          background: "#e0e7ff",
-          borderRadius: 7,
-          padding: "0.8em 1em"
+          background: "#f3f4f6",
+          borderRadius: 8,
+          padding: "0.8em 1em",
+          maxWidth: 480,
+          width: "100%",
+          fontFamily: "Helvetica Neue, Arial, sans-serif"
         }}
       >
         <b>Accessibility tips:</b> <br />
         • Use Tab and arrow keys to move between sentences. <br />
         • Press <kbd>Enter</kbd> or <kbd>Space</kbd> to hear any sentence via TTS.<br />
-        • Clicking the "Listen" button also plays the sentence.<br />
+        • Click any sentence to hear it spoken aloud.<br />
         • Increase font size or speech speed in Settings for comfort.
       </section>
     </div>

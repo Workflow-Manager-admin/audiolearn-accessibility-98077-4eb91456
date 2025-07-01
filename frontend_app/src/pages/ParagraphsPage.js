@@ -8,9 +8,32 @@ import { useNavigate } from "react-router-dom";
  * - Fetches all content items of type 'paragraph' from backend.
  * - Renders a large, fully ARIA and keyboard-accessible list of paragraphs.
  * - Each paragraph can be TTS read aloud by click or keyboard (Enter/Space).
- * - Large, scalable font; high-contrast and visually distinct.
- * - Same style and accessibility as CommonWordsPage/SentencesPage.
  */
+
+// Default examples to show if backend returns empty
+const defaultParagraphs = [
+  {
+    id: "p1",
+    text:
+      "My name is Ana. I live in a big city with my parents and younger sister. Every morning, I take the bus to school and read my favorite book during the ride.",
+  },
+  {
+    id: "p2",
+    text:
+      "Learning English is fun. I practice new words every day and talk with my friends about different topics. It helps me feel more confident.",
+  },
+  {
+    id: "p3",
+    text:
+      "In the park, birds sing and children play on the swings. Sometimes, I bring my notebook to write stories while sitting under a tree.",
+  },
+  {
+    id: "p4",
+    text:
+      "Today is sunny and bright. I am going to visit my grandmother and help her bake a chocolate cake.",
+  }
+];
+
 // PUBLIC_INTERFACE
 export default function ParagraphsPage() {
   const { settings } = useAccessibility();
@@ -29,11 +52,13 @@ export default function ParagraphsPage() {
     setParagraphs([]);
     listContent({ type: "paragraph", language: settings.language })
       .then((data) => {
-        setParagraphs(Array.isArray(data) ? data : []);
+        // Use fetched data or fallback to defaults
+        setParagraphs(Array.isArray(data) && data.length > 0 ? data : defaultParagraphs);
         setLoading(false);
       })
       .catch(() => {
         setError("Unable to load paragraphs from server.");
+        setParagraphs(defaultParagraphs); // Use defaults on error
         setLoading(false);
       });
   }, [settings.language]);
@@ -43,19 +68,7 @@ export default function ParagraphsPage() {
     if (headingRef.current && !loading) headingRef.current.focus();
   }, [loading]);
 
-  // On load, TTS announce page context for visually challenged
-  useEffect(() => {
-    if (!loading && paragraphs.length > 0) {
-      speakWithTTS(
-        "Paragraphs page loaded. There are " +
-          paragraphs.length +
-          " paragraphs for listening practice. Use Tab to move through the list. Click or press Enter to hear any paragraph."
-      );
-    }
-    // eslint-disable-next-line
-  }, [loading, paragraphs.length]);
-
-  // Utility: Use browser TTS for text
+  // Helper to trigger browser TTS
   function speakWithTTS(text, onEnd = null) {
     if (window.speechSynthesis && text) {
       try {
@@ -73,13 +86,13 @@ export default function ParagraphsPage() {
     }
   }
 
-  // When a paragraph is chosen for TTS (click or keyboard)
+  // TTS for specific paragraph click or keyboard
   function handleParagraphTTS(paragraphObj) {
     setTtsId(paragraphObj.id);
     speakWithTTS(paragraphObj.text, () => setTtsId(null));
   }
 
-  // Keyboard handler for list item
+  // Keyboard handler for paragraph list items
   function handleListItemKey(e, paragraphObj) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -87,25 +100,6 @@ export default function ParagraphsPage() {
     }
   }
 
-  // Button style (same as other section pages)
-  const buttonStyle = {
-    background: "var(--button-bg, #1976D2)",
-    color: "var(--button-text, #fff)",
-    border: "2px solid transparent",
-    borderRadius: "7px",
-    padding: "0.65em 1.1em",
-    fontSize: "1em",
-    fontWeight: 600,
-    cursor: "pointer",
-    outlineOffset: "2px",
-    minWidth: 70,
-    minHeight: 44,
-    marginRight: "0.3em",
-    marginTop: "0.7em",
-    transition: "background 0.2s, border 0.2s, color 0.2s",
-  };
-
-  // Loading and error states
   if (loading) {
     return (
       <div
@@ -114,14 +108,16 @@ export default function ParagraphsPage() {
         tabIndex={0}
         style={{
           fontSize: settings.fontSize + 6,
-          color: "#aaa",
+          color: "#6b7280",
           marginTop: "2em",
+          textAlign: "center"
         }}
       >
         Loading paragraphs, please wait...
       </div>
     );
   }
+
   if (error) {
     return (
       <div
@@ -134,49 +130,11 @@ export default function ParagraphsPage() {
           border: "2px solid #ba000d",
           padding: "1em",
           margin: "2em auto",
-          maxWidth: 600,
+          maxWidth: 480,
+          borderRadius: 14
         }}
       >
         {error}
-      </div>
-    );
-  }
-  // Fallback mock example paragraphs for demo/TTS
-  const mockParagraphs = [
-    {
-      id: "p1",
-      text:
-        "My name is Ana. I live in a big city with my parents and younger sister. Every morning, I take the bus to school and read my favorite book during the ride.",
-    },
-    {
-      id: "p2",
-      text:
-        "Learning English is fun. I practice new words every day and talk with my friends about different topics. It helps me feel more confident.",
-    },
-    {
-      id: "p3",
-      text:
-        "In the park, birds sing and children play on the swings. Sometimes, I bring my notebook to write stories while sitting under a tree.",
-    },
-    {
-      id: "p4",
-      text:
-        "Today is sunny and bright. I am going to visit my grandmother and help her bake a chocolate cake.",
-    }
-  ];
-  const paragraphsToShow = paragraphs.length ? paragraphs : mockParagraphs;
-  if (!paragraphsToShow.length) {
-    return (
-      <div
-        tabIndex={0}
-        style={{
-          fontSize: settings.fontSize,
-          color: "#222",
-          margin: "2em auto",
-          maxWidth: 600,
-        }}
-      >
-        No paragraphs found for this language (and no mock available).
       </div>
     );
   }
@@ -185,98 +143,119 @@ export default function ParagraphsPage() {
     <div
       aria-label="Paragraphs page"
       style={{
-        padding: "1em",
-        maxWidth: 700,
-        margin: "0 auto",
-        border: "2px solid var(--border-color, #1976D2)",
-        borderRadius: 9,
-        background: "#fafbff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "24px",
+        maxWidth: "100vw"
       }}
     >
-      <h2
-        ref={headingRef}
-        tabIndex={0}
+      <div
         style={{
-          fontSize: settings.fontSize + 8,
-          fontWeight: 800,
-          marginBottom: "0.2em",
-        }}
-        aria-label="Paragraphs"
-      >
-        Paragraphs
-      </h2>
-      <p style={{ fontSize: settings.fontSize, margin: ".8em 0 1.2em 0" }} tabIndex={0}>
-        Listen to and practice with these English paragraphs. Click or press Enter/Space on a paragraph to have it read aloud by text-to-speech (TTS).
-      </p>
-      <ul
-        ref={listRef}
-        aria-label="Paragraph list"
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: ".65em",
-          maxHeight: 500,
-          overflowY: "auto",
+          width: "100%",
+          maxWidth: 480,
           background: "#fff",
-          borderRadius: 6,
-          border: "1px solid #ddd",
+          borderRadius: 14,
+          border: "2px solid #AD1457",
+          padding: "24px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
         }}
       >
-        {paragraphsToShow.map((paragraphObj, idx) => (
-          <li
-            key={paragraphObj.id || paragraphObj.text || idx}
-            tabIndex={0}
-            style={{
-              fontSize: settings.fontSize + 2,
-              fontWeight: 500,
-              letterSpacing: ".01em",
-              color: "#800a34",
-              background: ttsId === paragraphObj.id ? "#F3E5F5" : "transparent",
-              borderRadius: 5,
-              outline: "none",
-              padding: ".7em 1.1em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              transition: "background 0.13s",
-              minHeight: 60,
-            }}
-            aria-label={`Paragraph: ${paragraphObj.text}`}
-            onClick={() => handleParagraphTTS(paragraphObj)}
-            onKeyDown={e => handleListItemKey(e, paragraphObj)}
-          >
-            <span style={{marginRight: 8}}>{paragraphObj.text}</span>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                handleParagraphTTS(paragraphObj);
-              }}
-              style={{
-                ...buttonStyle,
-                background: "#AD1457",
-                color: "#fff",
-                marginLeft: "auto",
-                minWidth: 54,
-                minHeight: 38,
-                fontSize: settings.fontSize,
-                borderRadius: 6,
-              }}
+        <h2
+          ref={headingRef}
+          tabIndex={0}
+          style={{
+            fontSize: settings.fontSize + 8,
+            fontWeight: 700,
+            color: "#AD1457",
+            marginBottom: "4px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          aria-label="Paragraphs"
+        >
+          Paragraphs
+        </h2>
+        <p
+          style={{
+            fontSize: settings.fontSize,
+            color: "#222",
+            margin: ".8em 0 1.2em 0",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          tabIndex={0}
+        >
+          Listen to and practice with these English paragraphs. Click or press Enter/Space on a paragraph to have it read aloud.
+        </p>
+        <ul
+          ref={listRef}
+          aria-label="Paragraph list"
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: ".65em",
+            maxHeight: 500,
+            overflowY: "auto",
+            background: "#fff",
+            borderRadius: 8
+          }}
+        >
+          {paragraphs.map((paragraphObj, idx) => (
+            <li
+              key={paragraphObj.id || idx}
               tabIndex={0}
-              aria-label={`Hear paragraph "${paragraphObj.text}"`}
-              disabled={ttsId === paragraphObj.id}
-              type="button"
+              style={{
+                fontSize: settings.fontSize + 2,
+                fontFamily: "Helvetica Neue, Arial, sans-serif",
+                fontWeight: 500,
+                color: "#000",
+                background: ttsId === paragraphObj.id ? "#f3f4f6" : "transparent",
+                borderRadius: 8,
+                outline: "none",
+                padding: ".7em 1em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "flex-start",
+                transition: "background 0.15s",
+                minHeight: 44,
+                userSelect: "none"
+              }}
+              aria-label={`Paragraph: ${paragraphObj.text}. Press to play.`}
+              onClick={() => handleParagraphTTS(paragraphObj)}
+              onKeyDown={e => handleListItemKey(e, paragraphObj)}
             >
-              {ttsId === paragraphObj.id ? "Playing…" : "🔊 Listen"}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div style={{ display: "flex", gap: "1em", marginTop: "2em" }}>
+              <span 
+                style={{
+                  marginRight: 12,
+                  marginTop: "2px",
+                  color: "#AD1457",
+                  fontSize: "1.2em",
+                  flexShrink: 0
+                }}
+                aria-hidden="true"
+              >
+                🔊
+              </span>
+              <span style={{ flex: 1 }}>{paragraphObj.text}</span>
+            </li>
+          ))}
+        </ul>
+
         <button
-          style={buttonStyle}
+          style={{
+            background: "#AD1457",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "12px 20px",
+            fontSize: settings.fontSize,
+            fontWeight: 600,
+            cursor: "pointer",
+            marginTop: "20px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
           aria-label="Go back to home"
           onClick={() => navigate("/")}
           tabIndex={0}
@@ -284,23 +263,27 @@ export default function ParagraphsPage() {
           ⬅ Home
         </button>
       </div>
+
       <section
         tabIndex={0}
         aria-label="Paragraphs page accessibility help"
         style={{
           marginTop: "1em",
-          color: "#6d235d",
+          color: "#AD1457",
           fontSize: settings.fontSize - 2,
-          background: "#fbeafc",
-          borderRadius: 7,
-          padding: "0.8em 1em"
+          background: "#f3f4f6",
+          borderRadius: 8,
+          padding: "0.8em 1em",
+          maxWidth: 480,
+          width: "100%",
+          fontFamily: "Helvetica Neue, Arial, sans-serif"
         }}
       >
         <b>Accessibility tips:</b> <br />
         • Use Tab and arrow keys to move between paragraphs. <br />
-        • Press <kbd>Enter</kbd> or <kbd>Space</kbd> to have any paragraph read aloud.<br />
-        • Clicking the "Listen" button plays the paragraph immediately.<br />
-        • You can increase font size or TTS speed in Settings for easier reading and listening.
+        • Press <kbd>Enter</kbd> or <kbd>Space</kbd> to hear any paragraph via TTS.<br />
+        • Click any paragraph to hear it spoken aloud.<br />
+        • Increase font size or speech speed in Settings for comfort.
       </section>
     </div>
   );

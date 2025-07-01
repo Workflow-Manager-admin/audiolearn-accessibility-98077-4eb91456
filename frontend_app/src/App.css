@@ -8,6 +8,16 @@
   --border-color: #e9ecef;
   --button-bg: #007bff;
   --button-text: #ffffff;
+  
+  /* Section accent colors */
+  --words-accent: #2563eb;
+  --sentences-accent: #059669;
+  --paragraphs-accent: #AD1457;
+  
+  /* Neutral colors */
+  --neutral-bg-soft: #f3f4f6;
+  --subtitle-text: #222;
+  --muted-text: #6b7280;
 }
 
 [data-theme="dark"] {

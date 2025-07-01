@@ -11,6 +11,16 @@ import { useNavigate } from "react-router-dom";
  * - Fully keyboard and screen reader accessible.
  */
 
+// Default examples to show if backend returns empty
+const defaultWords = [
+  { id: "w1", text: "apple" },
+  { id: "w2", text: "happy" },
+  { id: "w3", text: "school" },
+  { id: "w4", text: "friend" },
+  { id: "w5", text: "music" },
+  { id: "w6", text: "water" }
+];
+
 // PUBLIC_INTERFACE
 export default function CommonWordsPage() {
   const { settings } = useAccessibility();
@@ -29,11 +39,13 @@ export default function CommonWordsPage() {
     setWords([]);
     listContent({ type: "word", language: settings.language })
       .then((data) => {
-        setWords(Array.isArray(data) ? data : []);
+        // Use fetched data or fallback to defaults
+        setWords(Array.isArray(data) && data.length > 0 ? data : defaultWords);
         setLoading(false);
       })
       .catch(() => {
         setError("Unable to load common words from server.");
+        setWords(defaultWords); // Use defaults on error
         setLoading(false);
       });
   }, [settings.language]);
@@ -43,19 +55,7 @@ export default function CommonWordsPage() {
     if (headingRef.current && !loading) headingRef.current.focus();
   }, [loading]);
 
-  // On initial load, auto-TTS announce context for visually challenged
-  useEffect(() => {
-    if (!loading && words.length > 0) {
-      speakWithTTS(
-        "Common Words page loaded. There are " +
-          words.length +
-          " vocabulary words. Use Tab to move through the list. Click or press Enter to hear any word."
-      );
-    }
-    // eslint-disable-next-line
-  }, [loading, words.length]);
-
-  // Helper to trigger browser TTS on a given text (uses global settings)
+  // Helper to trigger browser TTS
   function speakWithTTS(text, onEnd = null) {
     if (window.speechSynthesis && text) {
       try {
@@ -66,7 +66,6 @@ export default function CommonWordsPage() {
         if (typeof onEnd === "function") utter.onend = onEnd;
         window.speechSynthesis.speak(utter);
       } catch {
-        // no-op
         if (typeof onEnd === "function") onEnd();
       }
     } else if (typeof onEnd === "function") {
@@ -88,25 +87,6 @@ export default function CommonWordsPage() {
     }
   }
 
-  // Return button style shared with rest of app (high-contrast, ARIA)
-  const buttonStyle = {
-    background: "var(--button-bg, #1976D2)",
-    color: "var(--button-text, #fff)",
-    border: "2px solid transparent",
-    borderRadius: "7px",
-    padding: "0.65em 1.1em",
-    fontSize: "1em",
-    fontWeight: 600,
-    cursor: "pointer",
-    outlineOffset: "2px",
-    minWidth: 70,
-    minHeight: 44,
-    marginRight: "0.3em",
-    marginTop: "0.7em",
-    transition: "background 0.2s, border 0.2s, color 0.2s",
-  };
-
-  // Loading and error states
   if (loading) {
     return (
       <div
@@ -115,14 +95,16 @@ export default function CommonWordsPage() {
         tabIndex={0}
         style={{
           fontSize: settings.fontSize + 6,
-          color: "#aaa",
-          marginTop: "2em"
+          color: "#6b7280",
+          marginTop: "2em",
+          textAlign: "center"
         }}
       >
         Loading common words, please wait...
       </div>
     );
   }
+
   if (error) {
     return (
       <div
@@ -135,35 +117,11 @@ export default function CommonWordsPage() {
           border: "2px solid #ba000d",
           padding: "1em",
           margin: "2em auto",
-          maxWidth: 600,
+          maxWidth: 480,
+          borderRadius: 14
         }}
       >
         {error}
-      </div>
-    );
-  }
-  // Provide mock data if backend returns empty or fails
-  const mockWords = [
-    { id: "w1", text: "apple" },
-    { id: "w2", text: "happy" },
-    { id: "w3", text: "school" },
-    { id: "w4", text: "friend" },
-    { id: "w5", text: "music" },
-    { id: "w6", text: "water" }
-  ];
-  const wordsToShow = words.length ? words : mockWords;
-  if (!wordsToShow.length) {
-    return (
-      <div
-        tabIndex={0}
-        style={{
-          fontSize: settings.fontSize,
-          color: "#222",
-          margin: "2em auto",
-          maxWidth: 600,
-        }}
-      >
-        No vocabulary words found for this language (and no mock available).
       </div>
     );
   }
@@ -172,98 +130,117 @@ export default function CommonWordsPage() {
     <div
       aria-label="Common Words page"
       style={{
-        padding: "1em",
-        maxWidth: 700,
-        margin: "0 auto",
-        border: "2px solid var(--border-color, #1976D2)",
-        borderRadius: 9,
-        background: "#fafbff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "24px",
+        maxWidth: "100vw"
       }}
     >
-      <h2
-        ref={headingRef}
-        tabIndex={0}
-        style={{ fontSize: settings.fontSize + 8, fontWeight: 800, marginBottom: "0.2em" }}
-        aria-label="Common Words"
-      >
-        Common Words
-      </h2>
-      <p style={{ fontSize: settings.fontSize, margin: ".8em 0 1.2em 0" }} tabIndex={0}>
-        Explore the most frequent English vocabulary words. Click or press Enter/Space on a word to hear it aloud.
-      </p>
-      <ul
-        ref={listRef}
-        aria-label="Common word list"
+      <div
         style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: ".65em",
-          maxHeight: 500,
-          overflowY: "auto",
+          width: "100%",
+          maxWidth: 480,
           background: "#fff",
-          borderRadius: 6,
-          border: "1px solid #ddd",
+          borderRadius: 14,
+          border: "2px solid var(--words-accent, #2563eb)",
+          padding: "24px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
         }}
       >
-        {wordsToShow.map((wordObj, idx) => (
-          <li
-            key={wordObj.id || wordObj.text || idx}
-            tabIndex={0}
-            style={{
-              fontSize: settings.fontSize + 6,
-              fontWeight: 600,
-              letterSpacing: ".02em",
-              color: "#21306b",
-              background: ttsId === wordObj.id ? "#E3F2FD" : "transparent",
-              borderRadius: 5,
-              outline: "none",
-              padding: ".7em 1.1em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              transition: "background 0.13s",
-              minHeight: 48,
-            }}
-            aria-label={`Word: ${wordObj.text}`}
-            onClick={() => handleWordTTS(wordObj)}
-            onKeyDown={e => handleListItemKey(e, wordObj)}
-            onFocus={() => {
-              // Optionally announce word on focus (do NOT TTS automatically)
-              // speakWithTTS(wordObj.text);
-            }}
-          >
-            <span>{wordObj.text}</span>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                handleWordTTS(wordObj);
-              }}
-              style={{
-                ...buttonStyle,
-                background: "#1976D2",
-                color: "#fff",
-                marginLeft: "auto",
-                minWidth: 48,
-                minHeight: 38,
-                fontSize: settings.fontSize,
-                borderRadius: 6,
-              }}
+        <h2
+          ref={headingRef}
+          tabIndex={0}
+          style={{
+            fontSize: settings.fontSize + 8,
+            fontWeight: 700,
+            color: "var(--words-accent, #2563eb)",
+            marginBottom: "4px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          aria-label="Common Words"
+        >
+          Common Words
+        </h2>
+        <p
+          style={{
+            fontSize: settings.fontSize,
+            color: "#222",
+            margin: ".8em 0 1.2em 0",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
+          tabIndex={0}
+        >
+          Explore the most frequent English vocabulary words. Click or press Enter/Space on a word to hear it aloud.
+        </p>
+        <ul
+          ref={listRef}
+          aria-label="Common word list"
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: ".65em",
+            maxHeight: 500,
+            overflowY: "auto",
+            background: "#fff",
+            borderRadius: 8
+          }}
+        >
+          {words.map((wordObj, idx) => (
+            <li
+              key={wordObj.id || idx}
               tabIndex={0}
-              aria-label={`Hear word ${wordObj.text}`}
-              disabled={ttsId === wordObj.id}
-              type="button"
+              style={{
+                fontSize: settings.fontSize + 2,
+                fontFamily: "Helvetica Neue, Arial, sans-serif",
+                fontWeight: 500,
+                color: "#000",
+                background: ttsId === wordObj.id ? "#f3f4f6" : "transparent",
+                borderRadius: 8,
+                outline: "none",
+                padding: ".7em 1em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                transition: "background 0.15s",
+                minHeight: 44,
+                userSelect: "none"
+              }}
+              aria-label={`Word: ${wordObj.text}. Press to play.`}
+              onClick={() => handleWordTTS(wordObj)}
+              onKeyDown={e => handleListItemKey(e, wordObj)}
             >
-              {ttsId === wordObj.id ? "Playing…" : "🔊 Listen"}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div style={{ display: "flex", gap: "1em", marginTop: "2em" }}>
+              <span 
+                style={{
+                  marginRight: 12,
+                  color: "var(--words-accent, #2563eb)",
+                  fontSize: "1.2em"
+                }}
+                aria-hidden="true"
+              >
+                🔊
+              </span>
+              <span>{wordObj.text}</span>
+            </li>
+          ))}
+        </ul>
+
         <button
-          style={buttonStyle}
+          style={{
+            background: "var(--words-accent, #2563eb)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "12px 20px",
+            fontSize: settings.fontSize,
+            fontWeight: 600,
+            cursor: "pointer",
+            marginTop: "20px",
+            fontFamily: "Helvetica Neue, Arial, sans-serif"
+          }}
           aria-label="Go back to home"
           onClick={() => navigate("/")}
           tabIndex={0}
@@ -271,22 +248,26 @@ export default function CommonWordsPage() {
           ⬅ Home
         </button>
       </div>
+
       <section
         tabIndex={0}
         aria-label="Common Words page accessibility help"
         style={{
           marginTop: "1em",
-          color: "#3569bb",
+          color: "var(--words-accent, #2563eb)",
           fontSize: settings.fontSize - 2,
-          background: "#e0e7ff",
-          borderRadius: 7,
-          padding: "0.8em 1em"
+          background: "#f3f4f6",
+          borderRadius: 8,
+          padding: "0.8em 1em",
+          maxWidth: 480,
+          width: "100%",
+          fontFamily: "Helvetica Neue, Arial, sans-serif"
         }}
       >
         <b>Accessibility tips:</b> <br />
         • Use Tab and arrow keys to move between words. <br />
         • Press <kbd>Enter</kbd> or <kbd>Space</kbd> to hear any word via TTS.<br />
-        • Clicking the "Listen" button also plays the word.<br />
+        • Click any word to hear it spoken aloud.<br />
         • Increase font size or speech speed in Settings for comfort.
       </section>
     </div>
