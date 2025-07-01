@@ -141,7 +141,31 @@ export default function ParagraphsPage() {
       </div>
     );
   }
-  if (!paragraphs.length) {
+  // Fallback mock example paragraphs for demo/TTS
+  const mockParagraphs = [
+    {
+      id: "p1",
+      text:
+        "My name is Ana. I live in a big city with my parents and younger sister. Every morning, I take the bus to school and read my favorite book during the ride.",
+    },
+    {
+      id: "p2",
+      text:
+        "Learning English is fun. I practice new words every day and talk with my friends about different topics. It helps me feel more confident.",
+    },
+    {
+      id: "p3",
+      text:
+        "In the park, birds sing and children play on the swings. Sometimes, I bring my notebook to write stories while sitting under a tree.",
+    },
+    {
+      id: "p4",
+      text:
+        "Today is sunny and bright. I am going to visit my grandmother and help her bake a chocolate cake.",
+    }
+  ];
+  const paragraphsToShow = paragraphs.length ? paragraphs : mockParagraphs;
+  if (!paragraphsToShow.length) {
     return (
       <div
         tabIndex={0}
@@ -152,7 +176,7 @@ export default function ParagraphsPage() {
           maxWidth: 600,
         }}
       >
-        No paragraphs found for this language.
+        No paragraphs found for this language (and no mock available).
       </div>
     );
   }
@@ -201,7 +225,7 @@ export default function ParagraphsPage() {
           border: "1px solid #ddd",
         }}
       >
-        {paragraphs.map((paragraphObj, idx) => (
+        {paragraphsToShow.map((paragraphObj, idx) => (
           <li
             key={paragraphObj.id || paragraphObj.text || idx}
             tabIndex={0}

@@ -139,7 +139,16 @@ export default function SentencesPage() {
       </div>
     );
   }
-  if (!sentences.length) {
+  // Provide fallback mock data for demo/TTS if backend is empty
+  const mockSentences = [
+    { id: "s1", text: "This is my book." },
+    { id: "s2", text: "How are you today?" },
+    { id: "s3", text: "I like music and dancing." },
+    { id: "s4", text: "The sun is bright." },
+    { id: "s5", text: "Can you help me, please?" }
+  ];
+  const sentencesToShow = sentences.length ? sentences : mockSentences;
+  if (!sentencesToShow.length) {
     return (
       <div
         tabIndex={0}
@@ -150,7 +159,7 @@ export default function SentencesPage() {
           maxWidth: 600,
         }}
       >
-        No sentences found for this language.
+        No sentences found for this language (and no mock available).
       </div>
     );
   }
@@ -195,7 +204,7 @@ export default function SentencesPage() {
           border: "1px solid #ddd",
         }}
       >
-        {sentences.map((sentenceObj, idx) => (
+        {sentencesToShow.map((sentenceObj, idx) => (
           <li
             key={sentenceObj.id || sentenceObj.text || idx}
             tabIndex={0}
