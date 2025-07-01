@@ -37,7 +37,7 @@ const defaultParagraphs = [
 // PUBLIC_INTERFACE
 export default function ParagraphsPage() {
   const { settings } = useAccessibility();
-  const [paragraphs, setParagraphs] = useState([]);
+  const [paragraphs, setParagraphs] = useState(defaultParagraphs);  // Initialize with defaults
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [ttsId, setTtsId] = useState(null);

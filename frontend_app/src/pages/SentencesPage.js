@@ -22,7 +22,7 @@ const defaultSentences = [
 // PUBLIC_INTERFACE
 export default function SentencesPage() {
   const { settings } = useAccessibility();
-  const [sentences, setSentences] = useState([]);
+  const [sentences, setSentences] = useState(defaultSentences);  // Initialize with defaults
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [ttsId, setTtsId] = useState(null);

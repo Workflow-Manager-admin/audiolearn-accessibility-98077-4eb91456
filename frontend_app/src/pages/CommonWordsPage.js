@@ -24,7 +24,7 @@ const defaultWords = [
 // PUBLIC_INTERFACE
 export default function CommonWordsPage() {
   const { settings } = useAccessibility();
-  const [words, setWords] = useState([]);
+  const [words, setWords] = useState(defaultWords);  // Initialize with defaults
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [ttsId, setTtsId] = useState(null);
