@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import VoiceCommandPage from "./pages/VoiceCommandPage";
 import CommonWordsPage from "./pages/CommonWordsPage";
 import SentencesPage from "./pages/SentencesPage";
+import ParagraphsPage from "./pages/ParagraphsPage";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -30,6 +31,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/words" element={<CommonWordsPage />} />
             <Route path="/sentences" element={<SentencesPage />} />
+            <Route path="/paragraphs" element={<ParagraphsPage />} />
             <Route path="/content/:contentId" element={<ContentPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/daily" element={<DailySuggestionPage />} />
