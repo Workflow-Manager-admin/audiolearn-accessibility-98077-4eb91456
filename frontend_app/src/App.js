@@ -12,6 +12,7 @@ import QuizPage from "./pages/QuizPage";
 import QuizResultsPage from "./pages/QuizResultsPage";
 import SettingsPage from "./pages/SettingsPage";
 import VoiceCommandPage from "./pages/VoiceCommandPage";
+import CommonWordsPage from "./pages/CommonWordsPage";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -26,6 +27,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/words" element={<CommonWordsPage />} />
             <Route path="/content/:contentId" element={<ContentPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/daily" element={<DailySuggestionPage />} />
