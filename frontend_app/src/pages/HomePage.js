@@ -1,62 +1,83 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAccessibility } from "../AccessibilityContext";
 
-const sampleParagraph = {
-  text: "Welcome to AudioLearn. This is your interactive learning companion designed for accessibility. Click or tap anywhere on this text to hear it read aloud. The more you practice listening and reading, the better you'll become at English.",
-  heading: "Learn English Through Listening"
-};
+// Sample news paragraphs - in a real app, these would come from an API
+const newsParagraphs = [
+  {
+    id: "n1",
+    text: "The government has announced a new educational initiative to promote digital literacy across rural areas. The program aims to reach over 10 million students in the next five years, providing them with access to modern technology and online learning resources.",
+  },
+  {
+    id: "n2",
+    text: "In a significant environmental policy shift, the nation has committed to reducing carbon emissions by 40% by 2030. This ambitious target will involve major investments in renewable energy and sustainable transportation infrastructure.",
+  },
+  {
+    id: "n3",
+    text: "A groundbreaking healthcare program has been launched to provide free medical check-ups to senior citizens nationwide. The initiative will establish mobile medical units that will visit remote villages and urban centers regularly.",
+  },
+  {
+    id: "n4",
+    text: "The national space agency has successfully launched its latest satellite, enhancing the country's capabilities in weather forecasting and disaster management. This technological advancement will improve early warning systems for natural disasters.",
+  }
+];
 
 /**
- * Accessible Home Page with automatic TTS
- * - Displays a single prominent paragraph
- * - Auto-reads content on page load
- * - Supports click/tap for repeat playback
- * - Fully keyboard accessible
- * - High contrast and scalable text
+ * Accessible Home Page with auto-playing national affairs news
+ * - Displays current affairs paragraphs with high contrast
+ * - Auto-reads content on load and paragraph change
+ * - Supports keyboard navigation and screen readers
+ * - Next button cycles through paragraphs
  */
 // PUBLIC_INTERFACE
 export default function HomePage() {
   const { settings } = useAccessibility();
-  const paragraphRef = useRef();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isReading, setIsReading] = useState(false);
   const headingRef = useRef();
+  const paragraphRef = useRef();
 
-  // Auto TTS on mount
+  // Auto TTS on mount and paragraph change
   useEffect(() => {
     if (headingRef.current) {
       headingRef.current.focus();
       speakContent();
     }
-  }, []); // Run once on mount
+  }, [currentIndex]); // Re-run when paragraph changes
 
   // Helper to trigger browser TTS
   function speakContent() {
     if (window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel(); // Stop any ongoing speech
-        const fullText = `${sampleParagraph.heading}. ${sampleParagraph.text}`;
-        const utter = new window.SpeechSynthesisUtterance(fullText);
+        setIsReading(true);
+        const currentParagraph = newsParagraphs[currentIndex];
+        const utter = new window.SpeechSynthesisUtterance(currentParagraph.text);
         utter.lang = settings.language || "en";
         utter.rate = settings.ttsSpeed || 1.0;
+        utter.onend = () => setIsReading(false);
+        utter.onerror = () => setIsReading(false);
         window.speechSynthesis.speak(utter);
       } catch (err) {
         console.warn("TTS error:", err);
+        setIsReading(false);
       }
     }
   }
 
-  // Handle click/tap on paragraph
-  function handleParagraphInteraction(e) {
-    e.preventDefault();
-    speakContent();
+  // Handle next paragraph button click
+  function handleNextParagraph() {
+    setCurrentIndex((prev) => (prev + 1) % newsParagraphs.length);
   }
 
-  // Handle keyboard interaction
+  // Handle keyboard interaction for paragraph
   function handleKeyPress(e) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       speakContent();
     }
   }
+
+  const currentParagraph = newsParagraphs[currentIndex];
 
   return (
     <main
@@ -82,15 +103,15 @@ export default function HomePage() {
           textAlign: "center",
           maxWidth: "90%"
         }}
-        aria-label={sampleParagraph.heading}
+        aria-label="National Affairs and Current News"
       >
-        {sampleParagraph.heading}
+        National Affairs and Current News
       </h1>
 
       <div
-        role="button"
+        role="article"
         ref={paragraphRef}
-        onClick={handleParagraphInteraction}
+        onClick={speakContent}
         onKeyPress={handleKeyPress}
         tabIndex={0}
         style={{
@@ -104,12 +125,53 @@ export default function HomePage() {
           maxWidth: "90%",
           color: "var(--text-primary)",
           transition: "all 0.2s ease",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          position: "relative"
         }}
-        aria-label={`${sampleParagraph.text} Click or press Enter to hear this text again.`}
+        aria-label={`Current news: ${currentParagraph.text}. Click or press Enter to hear this text again.`}
       >
-        {sampleParagraph.text}
+        {currentParagraph.text}
+        {isReading && (
+          <div
+            style={{
+              position: "absolute",
+              top: "0.5rem",
+              right: "0.5rem",
+              background: "#4CAF50",
+              color: "white",
+              padding: "0.25rem 0.5rem",
+              borderRadius: "4px",
+              fontSize: `${settings.fontSize - 2}px`
+            }}
+            aria-live="polite"
+          >
+            Reading...
+          </div>
+        )}
       </div>
+
+      <button
+        onClick={handleNextParagraph}
+        style={{
+          marginTop: "2rem",
+          fontSize: `${settings.fontSize + 2}px`,
+          padding: "1rem 2rem",
+          background: "var(--button-bg, #1976D2)",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          minHeight: "44px",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem"
+        }}
+        aria-label="Next paragraph"
+        disabled={isReading}
+      >
+        Next Paragraph {isReading ? "(Reading...)" : ""}
+      </button>
 
       <div
         style={{
@@ -126,8 +188,10 @@ export default function HomePage() {
       >
         <strong>Accessibility Tips:</strong>
         <ul style={{ marginTop: "0.5rem", listStyle: "none", padding: 0 }}>
-          <li>• Click or tap the text above to hear it again</li>
-          <li>• Use Tab to focus and Enter/Space to activate</li>
+          <li>• Each paragraph is automatically read aloud when displayed</li>
+          <li>• Click or tap the text to hear it again</li>
+          <li>• Use Tab and Enter/Space to navigate with keyboard</li>
+          <li>• Press Next Paragraph for more news after listening</li>
           <li>• Adjust text size and speech speed in Settings</li>
         </ul>
       </div>
