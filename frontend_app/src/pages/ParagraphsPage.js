@@ -58,65 +58,11 @@ export default function ParagraphsPage() {
     }
   }, []); // Run only once on mount
 
-  // TEMPORARILY COMMENTED OUT - Verify fallback works without backend
-  // Attempt to fetch backend content after initial render
+  // Add diagnostic log on initial render
   useEffect(() => {
-    console.log('ParagraphsPage: Using default paragraphs, backend fetch disabled');
-    
-    // Uncomment the following to restore backend fetch:
-    /*
-    console.log('ParagraphsPage: Starting backend content fetch');
-    let isMounted = true;
-    
-    const loadContent = async () => {
-      console.log('ParagraphsPage: Initial render complete, paragraphs:', defaultParagraphs.length);
-      setLoading(true);
-      setError("");
-
-      try {
-        console.log('ParagraphsPage: Fetching from backend...');
-        const data = await listContent({ type: "paragraph", language: settings.language });
-        console.log('ParagraphsPage: Backend response received:', 
-          data ? `${data.length} paragraphs` : 'no data');
-
-        if (!isMounted) {
-          console.log('ParagraphsPage: Component unmounted, skipping update');
-          return;
-        }
-
-        // Enhanced validation with detailed logging
-        const isValidData = data && 
-                          Array.isArray(data) && 
-                          data.length > 0 && 
-                          data.every(item => item && typeof item.text === 'string');
-
-        if (isValidData) {
-          console.log('ParagraphsPage: Valid backend data found, updating content');
-          setParagraphs(data);
-        } else {
-          console.log('ParagraphsPage: Invalid/empty backend data, keeping defaults');
-          console.log('ParagraphsPage: Current defaults:', defaultParagraphs.length);
-        }
-      } catch (err) {
-        if (!isMounted) return;
-        console.warn('ParagraphsPage: Error fetching content:', err);
-        setError("Unable to load paragraphs from server. Showing default examples.");
-        console.log('ParagraphsPage: Fallback to defaults after error');
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          console.log('ParagraphsPage: Content load complete');
-        }
-      }
-    };
-
-    loadContent();
-    return () => { 
-      console.log('ParagraphsPage: Cleanup - marking component as unmounted');
-      isMounted = false; 
-    };
-    */
-  }, [settings.language]);
+    console.log('Rendering fallback example paragraphs!');
+    console.log('Number of paragraphs:', defaultParagraphs.length);
+  }, []); // Empty dependency array - runs once on mount
 
   // Helper to trigger browser TTS
   function speakWithTTS(text, onEnd = null) {
@@ -192,7 +138,8 @@ export default function ParagraphsPage() {
 
   // Helper to keep main rendering logic DRY
   function renderMainContent() {
-    console.log('ParagraphsPage: Rendering main content, paragraphs count:', paragraphs.length);
+    console.log('Rendering fallback example paragraphs!');
+    console.log('Paragraphs being rendered:', paragraphs.length);
     
     return (
       <div
