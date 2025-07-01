@@ -9,9 +9,37 @@ import {
 import { useAccessibility } from "../AccessibilityContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
+// Default quiz content to show if backend returns empty
+const defaultQuiz = {
+  id: "default-quiz",
+  title: "English Vocabulary Practice",
+  instructions: "Choose the best answer for each question. Use keyboard or click to select answers.",
+  questions: [
+    {
+      id: "q1",
+      text: "What is the opposite of 'happy'?",
+      choices: ["sad", "tall", "fast", "green"],
+      correct_index: 0
+    },
+    {
+      id: "q2", 
+      text: "Which word means 'a place where books are kept'?",
+      choices: ["garden", "library", "kitchen", "park"],
+      correct_index: 1
+    },
+    {
+      id: "q3",
+      text: "Complete the sentence: 'She ____ to school every day.'",
+      choices: ["go", "goes", "going", "went"],
+      correct_index: 1
+    }
+  ]
+};
+
 /**
  * Accessible Quiz Page: Loads a quiz from backend, supports answering,
  * clean keyboard navigation, and ARIA labels for all operations.
+ * Provides default quiz content if backend data unavailable.
  */
 // PUBLIC_INTERFACE
 export default function QuizPage() {
@@ -20,7 +48,7 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [quizList, setQuizList] = useState([]);
-  const [quiz, setQuiz] = useState(null);
+  const [quiz, setQuiz] = useState(defaultQuiz);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(null);
@@ -50,15 +78,25 @@ export default function QuizPage() {
           if (!selected) selected = qs[0];
           return getQuizById(selected.id);
         }
-        throw new Error("No quiz available");
+        // Use default quiz if no backend quizzes available
+        setQuiz(defaultQuiz);
+        setAnswers({});
+        setLoading(false);
+        return null;
       })
       .then((quizData) => {
-        setQuiz(quizData);
-        setAnswers({});
+        if (quizData) {
+          setQuiz(quizData);
+          setAnswers({});
+        }
         setLoading(false);
       })
       .catch((e) => {
-        setError("Failed to load quiz.");
+        console.error("Quiz loading error:", e);
+        // Fallback to default quiz on error
+        setQuiz(defaultQuiz);
+        setAnswers({});
+        setError("Could not load quiz from server. Using practice questions instead.");
         setLoading(false);
       });
   // eslint-disable-next-line
@@ -79,8 +117,31 @@ export default function QuizPage() {
     setLoading(true);
     setError("");
 
+    // For default/offline quiz, calculate score locally
+    if (quiz.id === "default-quiz") {
+      const correctAnswers = quiz.questions.reduce((count, q) => {
+        return count + (answers[q.id] === q.correct_index ? 1 : 0);
+      }, 0);
+      
+      const result = {
+        score: correctAnswers,
+        details: quiz.questions.map(q => ({
+          question: q.text,
+          your_answer: q.choices[answers[q.id]] || "No answer",
+          correct: answers[q.id] === q.correct_index,
+          correct_answer: q.choices[q.correct_index]
+        }))
+      };
+      
+      setScore(correctAnswers);
+      setResultDetail(result);
+      setSubmitted(true);
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Submit result to backend
+      // Submit result to backend for online quizzes
       const result = await submitQuizResult({
         user_id: userId,
         quiz_id: quiz.id,
@@ -95,6 +156,7 @@ export default function QuizPage() {
       setSubmitted(true);
       setLoading(false);
     } catch (e) {
+      console.error("Quiz submission error:", e);
       setError("Failed to submit quiz. Try again later.");
       setLoading(false);
     }
