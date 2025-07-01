@@ -1,122 +1,85 @@
-import React, { useEffect, useState } from "react";
-import {
-  listContent,
-  getDailySuggestion,
-  addFavorite,
-  getTTSForContent,
-} from "../api";
+import React, { useEffect, useRef, useState } from "react";
+import { listContent } from "../api";
 import { useAccessibility } from "../AccessibilityContext";
 import { useNavigate } from "react-router-dom";
 
 /**
- * Accessible Home Page that displays daily suggestions, available content, and quick-action controls.
- * Integrates accessibility settings (font size, theme, TTS speed) and supports screen readers.
+ * Accessible Home Page: shows three main sections (Common Words, Sentences, Paragraphs)
+ * as accessible navigation cards/buttons. Fetches content types from backend, auto-focuses for screen readers,
+ * and allows keyboard/ARIA navigation to each section. Sets up for TTS/auto-play integration.
  */
 // PUBLIC_INTERFACE
 export default function HomePage() {
   const { settings } = useAccessibility();
   const navigate = useNavigate();
-
-  // States
+  const headingRef = useRef();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [suggestion, setSuggestion] = useState(null);
-  const [content, setContent] = useState([]);
-  const [ttsStates, setTtsStates] = useState({});
-  const [favStates, setFavStates] = useState({});
-  const [playingId, setPlayingId] = useState(null);
+  const [sectionSamples, setSectionSamples] = useState({
+    word: null,
+    sentence: null,
+    paragraph: null,
+  });
 
-  // --- Accessibility states
-  const headingRef = React.useRef();
+  // Section labels & content types (maps backend "type" to display)
+  const sectionTypes = [
+    { key: "word", label: "Common Words", desc: "Learn the most frequent English words.", color: "#1565C0" },
+    { key: "sentence", label: "Sentences", desc: "Explore basic level-1 and level-2 sentences.", color: "#00897B" },
+    { key: "paragraph", label: "Paragraphs", desc: "Read and listen to short English paragraphs.", color: "#AD1457" },
+  ];
 
-  // Fetch daily suggestion and content list
+  // Initial fetch: get a sample content item for each section type
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     setError("");
-
-    // Fetch daily suggestion
-    const fetchSuggestion = settings.user?.id
-      ? getDailySuggestion(settings.user.id)
-      : Promise.resolve(null);
-
-    Promise.all([
-      listContent({ language: settings.language }),
-      fetchSuggestion,
-    ])
-      .then(([contentList, daily]) => {
+    // For accessibility, always fetch for current language
+    Promise.all(
+      sectionTypes.map((stype) =>
+        listContent({ type: stype.key, language: settings.language })
+          .then((items) => (items && items.length > 0 ? items[0] : null))
+          .catch(() => null)
+      )
+    )
+      .then((results) => {
         if (!mounted) return;
-        setContent(contentList || []);
-        setSuggestion(daily || null);
+        setSectionSamples({
+          word: results[0],
+          sentence: results[1],
+          paragraph: results[2],
+        });
         setLoading(false);
       })
-      .catch((err) => {
-        setError("Failed to load content from server.");
+      .catch(() => {
+        setError("Could not load content sections from server.");
         setLoading(false);
       });
+    return () => { mounted = false; };
+    // eslint-disable-next-line
+  }, [settings.language]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [settings.language, settings.user]);
-
-  // Focus heading on load for screen reader
+  // On load, focus the main heading for screen readers
   useEffect(() => {
-    if (headingRef.current) headingRef.current.focus();
+    if (headingRef.current && !loading) headingRef.current.focus();
   }, [loading]);
 
-  // Accessible TTS audio playback (browser TTS for fallback/demo)
-  async function handlePlayTTS(contentObj) {
-    setPlayingId(contentObj.id);
-    setTtsStates((s) => ({ ...s, [contentObj.id]: "loading" }));
-
-    try {
-      // Prefer backend TTS, fallback to SpeechSynthesis below
-      const ttsData = await getTTSForContent(contentObj.id);
-      if (ttsData && ttsData.url) {
-        const audio = new window.Audio(ttsData.url);
-        audio.playbackRate = settings.ttsSpeed || 1.0;
-        audio.onended = () => setPlayingId(null);
-        audio.onerror = () => setPlayingId(null);
-        audio.play();
-      } else {
-        throw new Error("No TTS audio URL from backend.");
-      }
-    } catch (e) {
-      // Fallback: use browser SpeechSynthesis
-      if (window.speechSynthesis) {
-        const utter = new window.SpeechSynthesisUtterance(contentObj.text);
-        utter.lang = contentObj.language || settings.language || "en";
-        utter.rate = settings.ttsSpeed || 1.0;
-        utter.volume = 1;
-        utter.onend = () => setPlayingId(null);
-        window.speechSynthesis.speak(utter);
-      }
-    }
-    setTtsStates((s) => ({ ...s, [contentObj.id]: "done" }));
+  // Keyboard: allow arrow keys to move focus from section-to-section
+  const sectionRefs = {
+    word: useRef(),
+    sentence: useRef(),
+    paragraph: useRef(),
+  };
+  function handleSectionKeyDown(e, idx) {
+    if (!["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+    e.preventDefault();
+    const order = ["word", "sentence", "paragraph"];
+    let newIdx = idx;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") newIdx = (idx + 1) % order.length;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") newIdx = (idx + order.length - 1) % order.length;
+    sectionRefs[order[newIdx]].current?.focus();
   }
 
-  // Add to favorites (API)
-  async function handleFavorite(contentObj) {
-    setFavStates((s) => ({ ...s, [contentObj.id]: "working" }));
-    try {
-      await addFavorite({
-        user_id: settings.user?.id,
-        content_id: contentObj.id,
-      });
-      setFavStates((s) => ({ ...s, [contentObj.id]: "done" }));
-    } catch {
-      setFavStates((s) => ({ ...s, [contentObj.id]: "error" }));
-    }
-  }
-
-  // Go to quiz with content ID
-  function handleQuiz(contentObj) {
-    navigate("/quiz", { state: { contentId: contentObj.id } });
-  }
-
-  // Render loading/error/empty
-  if (loading)
+  if (loading) {
     return (
       <div
         role="status"
@@ -128,10 +91,11 @@ export default function HomePage() {
           marginTop: "2em",
         }}
       >
-        Loading content, please wait...
+        Loading learning sections...
       </div>
     );
-  if (error)
+  }
+  if (error) {
     return (
       <div
         role="alert"
@@ -149,14 +113,15 @@ export default function HomePage() {
         {error}
       </div>
     );
+  }
 
   return (
     <div
-      aria-label="Home page with learning content and suggestions"
+      aria-label="Home page with main learning sections"
       style={{
         padding: "1em",
-        maxWidth: 900,
-        margin: "0 auto",
+        maxWidth: 800,
+        margin: "0 auto"
       }}
     >
       <h1
@@ -164,212 +129,134 @@ export default function HomePage() {
         tabIndex={0}
         style={{
           fontSize: settings.fontSize + 10,
-          fontWeight: "bold",
+          fontWeight: 800,
           outline: "none",
+          marginBottom: ".3em",
         }}
+        aria-label="Welcome to AudioLearn: Accessible English Learning"
       >
-        Welcome to AudioLearn: Accessible English Learning
+        Welcome to AudioLearn
       </h1>
-      <p tabIndex={0} style={{ fontSize: settings.fontSize }}>
-        Explore new words, sentences, paragraphs. Practice with quizzes and try your daily suggestion. Interface is optimized for screen reader, TTS, and high-contrast accessibility.
-      </p>
-
-      {/* --- Daily Suggestion */}
       <section
-        aria-label="Daily Suggestion"
+        aria-label="Choose a learning section"
         style={{
-          border: "2px solid var(--border-color, #1976D2)",
-          background: "#f0f8ff",
-          borderRadius: 8,
-          margin: "1.5em 0",
-          padding: "1em",
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "stretch",
+          gap: "1.5em",
+          flexWrap: "wrap",
+          margin: "1em 0 2em 0",
         }}
       >
-        <h2 tabIndex={0} style={{ fontSize: settings.fontSize + 2 }}>
-          Today's Suggestion
-        </h2>
-        {suggestion && suggestion.text ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5em",
-              marginTop: "0.5em",
+        {sectionTypes.map((stype, idx) => (
+          <button
+            key={stype.key}
+            ref={sectionRefs[stype.key]}
+            tabIndex={0}
+            aria-label={`Go to ${stype.label}. ${stype.desc} Example: ${sectionSamples[stype.key]?.text || "No example available"}`}
+            onClick={() => {
+              // Future: route to section page; for now, pass filtered type to /content/:contentId or a filtered page
+              // You can route to a filtered content page or set up a section route
+              // For now, let's route to the first example for each type (if exists)
+              if (sectionSamples[stype.key]) {
+                navigate(`/content/${sectionSamples[stype.key].id}`);
+              }
             }}
+            style={{
+              ...sectionCardStyle,
+              borderColor: stype.color,
+              background: "#fff",
+              color: "#111",
+              outline: "none",
+            }}
+            onKeyDown={(e) => handleSectionKeyDown(e, idx)}
           >
             <span
               style={{
-                fontSize: settings.fontSize + 3,
-                fontWeight: 600,
+                fontWeight: 700,
+                fontSize: settings.fontSize + 8,
+                color: stype.color,
+                marginBottom: "0.22em",
+                letterSpacing: "0.01em"
               }}
-              tabIndex={0}
-              aria-live="polite"
             >
-              {suggestion.text}
+              {stype.label}
             </span>
-            <div style={{ display: "flex", gap: "1em", marginTop: "0.4em" }}>
-              <button
-                style={buttonStyle}
-                aria-label="Play text to speech for daily suggestion"
-                onClick={() => handlePlayTTS(suggestion)}
-                disabled={playingId === suggestion.id}
-                tabIndex={0}
-              >
-                {playingId === suggestion.id ? "Playing..." : "🔊 Listen"}
-              </button>
-              <button
-                style={buttonStyle}
-                aria-label="Add suggestion to favorites"
-                onClick={() => handleFavorite(suggestion)}
-                tabIndex={0}
-              >
-                {favStates[suggestion.id] === "working"
-                  ? "Adding..."
-                  : favStates[suggestion.id] === "done"
-                  ? "★ Favorited"
-                  : "☆ Favorite"}
-              </button>
-              <button
-                style={buttonStyle}
-                aria-label="Practice with quiz for this suggestion"
-                onClick={() => handleQuiz(suggestion)}
-                tabIndex={0}
-              >
-                📝 Quiz
-              </button>
-            </div>
-          </div>
-        ) : (
-          <span tabIndex={0} style={{ fontSize: settings.fontSize }}>
-            No daily suggestion available.
-          </span>
-        )}
+            <span
+              style={{
+                fontSize: settings.fontSize,
+                color: "#333",
+                marginBottom: "0.6em",
+                display: "block"
+              }}
+            >
+              {stype.desc}
+            </span>
+            <span
+              tabIndex={0}
+              aria-label={`Sample: ${sectionSamples[stype.key]?.text || "No available sample in this section"}`}
+              style={{
+                fontSize: settings.fontSize - 2,
+                color: "#666",
+                display: "block",
+                fontStyle: "italic",
+                background: "#f5f5f5",
+                borderRadius: 7,
+                padding: "0.5em 0.9em",
+                minHeight: 40,
+              }}
+            >
+              {sectionSamples[stype.key]?.text
+                ? `Example: ${sectionSamples[stype.key].text}`
+                : <span style={{ color: "#aaa" }}>No example in this section</span>}
+            </span>
+          </button>
+        ))}
       </section>
 
-      {/* --- Main Content List */}
-      <section
-        aria-label="Learning Content"
+      <div
+        tabIndex={0}
+        aria-label="Home page accessibility help"
         style={{
-          border: "2px solid var(--border-color, #ccc)",
-          borderRadius: 6,
-          background: "#fff",
-          padding: "1.2em",
+          marginTop: "1.5em",
+          color: "#3569bb",
+          fontSize: settings.fontSize - 2,
+          background: "#e0e7ff",
+          borderRadius: 7,
+          padding: "0.8em 1em"
         }}
       >
-        <h2 tabIndex={0} style={{ fontSize: settings.fontSize + 2 }}>
-          Learning Content
-        </h2>
-        {content && content.length > 0 ? (
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gridTemplateColumns: "1fr",
-              gap: "0.85em",
-            }}
-          >
-            {content.map((item) => (
-              <li
-                key={item.id}
-                style={{
-                  border: "1px solid var(--border-color, #e0e0e0)",
-                  background:
-                    playingId === item.id
-                      ? "#f0f8ff"
-                      : favStates[item.id] === "done"
-                      ? "#e6ffe6"
-                      : "#fafafa",
-                  borderRadius: 6,
-                  padding: "0.75em",
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: 60,
-                }}
-              >
-                <span
-                  tabIndex={0}
-                  style={{ fontSize: settings.fontSize + 2, fontWeight: 500 }}
-                  aria-label={item.type + ": " + item.text}
-                >
-                  {item.text}
-                </span>
-                <span
-                  style={{
-                    fontSize: settings.fontSize - 2,
-                    fontStyle: "italic",
-                    color: "#333",
-                  }}
-                  tabIndex={0}
-                >
-                  {item.type && item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-                </span>
-                <div style={{ display: "flex", gap: "1em", marginTop: "0.5em" }}>
-                  <button
-                    style={buttonStyle}
-                    aria-label={`Play text to speech for: ${item.text}`}
-                    onClick={() => handlePlayTTS(item)}
-                    disabled={playingId === item.id}
-                    tabIndex={0}
-                  >
-                    {playingId === item.id ? "Playing..." : "🔊 Listen"}
-                  </button>
-                  <button
-                    style={buttonStyle}
-                    aria-label={`Add to favorites: ${item.text}`}
-                    onClick={() => handleFavorite(item)}
-                    tabIndex={0}
-                  >
-                    {favStates[item.id] === "working"
-                      ? "Adding..."
-                      : favStates[item.id] === "done"
-                      ? "★ Favorited"
-                      : "☆ Favorite"}
-                  </button>
-                  <button
-                    style={buttonStyle}
-                    aria-label={`Send to quiz: ${item.text}`}
-                    onClick={() => handleQuiz(item)}
-                    tabIndex={0}
-                  >
-                    📝 Quiz
-                  </button>
-                  <button
-                    style={buttonStyle}
-                    aria-label="See content details"
-                    onClick={() => navigate(`/content/${item.id}`)}
-                    tabIndex={0}
-                  >
-                    Details
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span tabIndex={0} style={{ fontSize: settings.fontSize }}>
-            No learning content found for current language.
-          </span>
-        )}
-      </section>
+        <b>Accessibility tips:</b> <br />
+        • Use Tab and arrow keys to move between sections.<br />
+        • Press Enter or Space to select and enter a section.<br />
+        • Each section entry will read out the content via text-to-speech.<br />
+        • Increase font size and TTS speed in Settings for better visibility and audibility.<br />
+        • All navigation is fully ARIA-labeled and screen reader-compatible.
+      </div>
     </div>
   );
 }
 
-// Accessible, high-contrast, scalable button style for all UI controls
-const buttonStyle = {
-  background: "var(--button-bg, #1976D2)",
-  color: "var(--button-text, #fff)",
-  border: "2px solid transparent",
-  borderRadius: "7px",
-  padding: "0.65em 1.1em",
-  fontSize: "1em",
-  fontWeight: 600,
+// Accessible, visually distinct, high-contrast section card/button
+const sectionCardStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "flex-start",
+  minWidth: 220,
+  minHeight: 200,
+  boxShadow: "0 3px 14px rgba(30,52,250,0.06)",
+  border: "3px solid #1976D2",
+  borderRadius: "16px",
+  padding: "1.3em 1.1em 1.2em 1em",
+  marginBottom: "0.7em",
+  marginTop: "0",
+  background: "#fafcff",
   cursor: "pointer",
-  outlineOffset: "2px",
-  minWidth: 70,
-  minHeight: 44,
-  marginRight: "0.3em",
-  transition: "background 0.2s, border 0.2s, color 0.2s",
+  transition: "border 0.2s, box-shadow 0.18s",
+  fontSize: "inherit",
+  outlineOffset: 3,
+  fontWeight: 500,
+  position: "relative"
 };
