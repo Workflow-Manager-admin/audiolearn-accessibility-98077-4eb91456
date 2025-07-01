@@ -393,9 +393,24 @@ export default function QuizPage() {
               fontSize: settings.fontSize + 2,
               fontWeight: 700,
               color: "#1976D2",
-              marginBottom: "0.45em"
+              marginBottom: "0.45em",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5em"
             }}
+            onClick={() => handlePlayTTS(q.text)}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handlePlayTTS(q.text);
+              }
+            }}
+            tabIndex={0}
+            role="button"
+            aria-label={`Question ${idx + 1}: ${q.text}. Click or press Enter to hear the question.`}
           >
+            <span aria-hidden="true" style={{ fontSize: "1.2em" }}>🔊</span>
             Q{idx + 1}: {q.text}
           </legend>
           <div role="group" aria-label={`Choices for question ${idx + 1}`}>
@@ -404,15 +419,31 @@ export default function QuizPage() {
                 key={cidx}
                 htmlFor={`q${q.id}_opt${cidx}`}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
                   fontSize: settings.fontSize,
                   padding: "0.3em 0.7em",
                   cursor: "pointer",
                   marginLeft: 10,
                   marginBottom: 2,
+                  gap: "0.5em"
                 }}
-                aria-label={choice}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    handlePlayTTS(choice);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handlePlayTTS(choice);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Option ${cidx + 1}: ${choice}. Click or press Enter to hear this option.`}
               >
+                <span aria-hidden="true" style={{ fontSize: "1.2em", color: "#1976D2" }}>🔊</span>
                 <input
                   id={`q${q.id}_opt${cidx}`}
                   name={`q${q.id}`}
